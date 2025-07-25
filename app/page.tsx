@@ -153,7 +153,12 @@ export default function VotingSystem() {
       setCurrentUser({ ...currentUser!, hasVoted: true });
       localStorage.setItem('votingSystemUser', JSON.stringify({ ...currentUser!, hasVoted: true }));
     } else {
-      toast({ title: 'Error', description: 'Failed to cast votes.', variant: 'destructive' });
+      if(res.status === 403) {
+        const data = await res.json();
+        toast({ title: 'Error', description: data.error, variant: 'destructive' });
+      } else {
+        toast({ title: 'Error', description: 'Failed to cast votes.', variant: 'destructive' });
+      }
     }
   };
 

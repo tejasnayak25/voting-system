@@ -13,6 +13,11 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { candidateIds, email } = body;
+
+    if(data.votedUsers && data.votedUsers.includes(email)) {
+      return NextResponse.json({ error: 'You\'ve voted already' }, { status: 403 });
+    }
+
     if (!candidateIds || !Array.isArray(candidateIds) || candidateIds.length === 0 || !email) {
       return NextResponse.json({ error: 'Missing candidateIds or email' }, { status: 400 });
     }
