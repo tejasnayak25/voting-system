@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +43,7 @@ export default function VotingSystem() {
   const [voteSelections, setVoteSelections] = useState<VoteSelection>({});
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [votingEnabled, setVotingEnabled] = useState(false);
+  const [resetConfirmationOpen, setResetConfirmationOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchCandidates = async () => {
@@ -412,9 +414,25 @@ export default function VotingSystem() {
             <Button variant="default" onClick={() => toggleVoting()} className="w-auto">
               {votingEnabled ? "Disable Voting" : "Enable Voting"}
             </Button>
-            <Button variant="secondary" onClick={() => resetVotes()} className="w-auto bg-red-500 hover:bg-red-600 text-white">
+            <Button variant="secondary" onClick={() => setResetConfirmationOpen(true)} className="w-auto bg-red-500 hover:bg-red-600 text-white">
               Reset Votes
             </Button>
+            <Dialog open={resetConfirmationOpen} onOpenChange={(o) => !o && setResetConfirmationOpen(false)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Reset Votes</DialogTitle>
+                  <DialogDescription>Are you sure you want to reset all votes? This action cannot be undone.</DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="ghost" onClick={() => setResetConfirmationOpen(false)}>
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  <Button className='bg-red-500 hover:bg-red-600 text-white' onClick={() => resetVotes()}>Reset Votes</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       ) : (<></>)}
