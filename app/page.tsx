@@ -40,6 +40,7 @@ export default function VotingSystem() {
   const [verifyingOTP, setVerifyingOTP] = useState(false);
   const [submittingVotes, setSubmittingVotes] = useState(false);
   const [voteSelections, setVoteSelections] = useState<VoteSelection>({});
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchCandidates = async () => {
@@ -68,6 +69,18 @@ export default function VotingSystem() {
     }
 
     fetchCandidates();
+
+    const fetchCsrfToken = async () => {
+      try {
+        const response = await fetch("/api/csrf");
+        let data = await response.json();
+        setCsrfToken(data.csrfToken);
+      } catch (error) {
+        console.error("Failed to fetch CSRF token:", error);
+      }
+    };
+
+    fetchCsrfToken();
   }, []);
 
   const validateEmail = (email: string) => email.endsWith('@sode-edu.in');
@@ -154,7 +167,10 @@ export default function VotingSystem() {
     const candidateIds = Object.values(voteSelections);
     const res = await fetch('/api/vote', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken!,
+      },
       body: JSON.stringify({ candidateIds, email: currentUser?.email })
     });
 

@@ -1,6 +1,8 @@
 // app/api/vote/route.ts
 import { db, firestore } from '@/lib/firebase';
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifyCSRFToken } from '@/lib/csrf';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,6 +15,13 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { candidateIds, email } = body;
+
+    const csrfToken = req.headers.get('x-csrf-token');
+    const csrfSecret = cookies().get('csrfSecret')?.value;
+
+    if (!csrfToken || !csrfSecret || !verifyCSRFToken(csrfSecret, csrfToken)) {
+      return NextResponse.json({ error: 'Invalid CSRF token' }, { status: 403 });
+    }
 
     if(data.votedUsers && data.votedUsers.includes(email)) {
       return NextResponse.json({ error: 'You\'ve voted already' }, { status: 403 });
