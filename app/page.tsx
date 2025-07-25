@@ -37,6 +37,7 @@ export default function VotingSystem() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [checkingVotedStatus, setCheckingVotedStatus] = useState(true); // new state
+  const [verifyingOTP, setVerifyingOTP] = useState(false);
   const [voteSelections, setVoteSelections] = useState<VoteSelection>({});
   const { toast } = useToast();
 
@@ -100,6 +101,7 @@ export default function VotingSystem() {
       toast({ title: 'Invalid OTP format', description: 'OTP must be a 6-digit number.', variant: 'destructive' });
       return;
     }
+    setVerifyingOTP(true);
     let res = await fetch("/api/verify-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -117,6 +119,8 @@ export default function VotingSystem() {
     } else {
       toast({ title: 'Invalid OTP', description: 'Incorrect OTP.', variant: 'destructive' });
     }
+
+    setVerifyingOTP(false);
   };
 
   const logout = () => {
@@ -259,7 +263,7 @@ export default function VotingSystem() {
                     disabled={otp.length !== 6}
                     className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                   >
-                    Verify & Login
+                    { verifyingOTP ? 'Verifying OTP...' : "Verify & Login" }
                   </Button>
                   <Button 
                     variant="outline" 
