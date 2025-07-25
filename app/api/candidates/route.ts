@@ -21,9 +21,12 @@ export async function POST(req: NextRequest) {
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'Missing request body' }, { status: 400 });
     }
-    const { name, position, description } = body;
+    const { name, position, description, email } = body;
     if (!name || !position || !description) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    }
+    if(!email || typeof email !== 'string' || email !== process.env.ADMIN_MAIL) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     const candidatesRef = db.collection('voting-system').doc('election').collection('candidates');
     const docRef = await candidatesRef.add({
@@ -41,9 +44,12 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id } = body;
+    const { id, email } = body;
     if (!id) {
       return NextResponse.json({ error: 'Missing candidate id' }, { status: 400 });
+    }
+    if(!email || typeof email !== 'string' || email !== process.env.ADMIN_MAIL) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     const candidatesRef = db.collection('voting-system').doc('election').collection('candidates');
     await candidatesRef.doc(id).delete();

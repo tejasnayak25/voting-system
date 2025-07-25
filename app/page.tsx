@@ -41,6 +41,7 @@ export default function VotingSystem() {
   const [submittingVotes, setSubmittingVotes] = useState(false);
   const [voteSelections, setVoteSelections] = useState<VoteSelection>({});
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
+  const [votingEnabled, setVotingEnabled] = useState(false);
   const { toast } = useToast();
 
   const fetchCandidates = async () => {
@@ -62,9 +63,14 @@ export default function VotingSystem() {
           .finally(() => setCheckingVotedStatus(false)); // done checking
       } else {
         // if admin, directly set the user and skip the voted check
-        setCheckingVotedStatus(false);
-        console.log("admin user")
-        setCurrentUser(user);
+        fetch(`/api/voting-enabled`)
+          .then(res => res.json())
+          .then(data => setVotingEnabled(data.enabled))
+          .catch(() => setVotingEnabled(false))
+          .finally(() => {
+            setCheckingVotedStatus(false);
+            setCurrentUser(user);
+          });
       }
     }
 
@@ -201,7 +207,7 @@ export default function VotingSystem() {
       toast({ title: 'Duplicate Candidate', description: 'Same name & position already exists.', variant: 'destructive' });
       return;
     }
-    let data = JSON.stringify({ name, position, description });
+    let data = JSON.stringify({ name, position, description, email: currentUser?.email });
 
     candidates.push({ id: crypto.randomUUID(), name, position, description, votes: 0 });
     setCandidates([...candidates]);
@@ -225,7 +231,7 @@ export default function VotingSystem() {
     const res = await fetch('/api/candidates', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ id, email: currentUser?.email })
     });
     if (res.ok) {
       toast({ title: 'Candidate Removed', description: 'Candidate removed successfully.' });
@@ -234,6 +240,50 @@ export default function VotingSystem() {
       toast({ title: 'Error', description: 'Failed to remove candidate.', variant: 'destructive' });
     }
   };
+
+  async function toggleVoting() {
+    const res = await fetch('/api/voting-enabled', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken!,
+      },
+      body: JSON.stringify({ email: currentUser?.email })
+    });
+
+    if(res.ok) {
+      toast({ title: 'Voting Toggled', description: 'Voting has been toggled.' });
+      setVotingEnabled(!votingEnabled);
+    } else {
+      if(res.status === 403) {
+        toast({ title: 'Error', description: 'You are not authorized to do this operation.', variant: 'destructive' })
+      } else {
+        toast({ title: 'Error', description: 'Failed to toggle voting.', variant: 'destructive' });
+      }
+    }
+  }
+
+  async function resetVotes() {
+    const res = await fetch('/api/reset-votes', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken!,
+      },
+      body: JSON.stringify({ email: currentUser?.email })
+    });
+
+    if(res.ok) {
+      toast({ title: 'Votes Reset', description: 'All votes have been reset.' });
+      fetchCandidates();
+    } else {
+      if(res.status === 403) {
+        toast({ title: 'Error', description: 'You are not authorized to reset votes.', variant: 'destructive' })
+      } else {
+        toast({ title: 'Error', description: 'Failed to reset votes.', variant: 'destructive' });
+      }
+    }
+  }
 
   if (!currentUser) {
     return (
@@ -313,7 +363,7 @@ export default function VotingSystem() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-row justify-between items-center h-auto sm:h-16 py-4 sm:py-0 gap-4">
@@ -334,12 +384,13 @@ export default function VotingSystem() {
           </div>
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-4 sm:px-4 lg:px-8 py-12 sm:py-20">
+      <main className="max-w-7xl mx-auto px-4 sm:px-4 lg:px-8 py-12 sm:py-24">
         {currentUser.role === 'admin' ? (
           <AdminDashboard 
             candidates={candidates}
             addCandidate={addCandidate}
             deleteCandidate={deleteCandidate}
+            votingEnabled={votingEnabled}
           />
         ) : (
           <UserDashboard 
@@ -352,12 +403,27 @@ export default function VotingSystem() {
           />
         )}
       </main>
+      {currentUser.role === 'admin' ? (
+        <div className='flex justify-center sm:justify-between items-center mt-8 p-4 sm:p-5 bg-white/80 backdrop-blur-sm border-t border-gray-200 sticky bottom-0 z-50'>
+          <p className='hidden sm:block'>
+            <p className='text-gray-600'>Admin: {currentUser?.email}</p>
+          </p>
+          <div className='flex w-full sm:w-auto justify-between sm:justify-center items-center gap-4'>
+            <Button variant="default" onClick={() => toggleVoting()} className="w-auto">
+              {votingEnabled ? "Disable Voting" : "Enable Voting"}
+            </Button>
+            <Button variant="secondary" onClick={() => resetVotes()} className="w-auto bg-red-500 hover:bg-red-600 text-white">
+              Reset Votes
+            </Button>
+          </div>
+        </div>
+      ) : (<></>)}
       <Toaster />
     </div>
   );
 }
 
-function AdminDashboard({ candidates, addCandidate, deleteCandidate }: { candidates: Candidate[]; addCandidate: (name: string, position: string, description: string) => Promise<void>; deleteCandidate: (id: string) => void; }) {
+function AdminDashboard({ candidates, addCandidate, deleteCandidate, votingEnabled }: { candidates: Candidate[]; addCandidate: (name: string, position: string, description: string) => Promise<void>; deleteCandidate: (id: string) => void; votingEnabled: boolean; }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState('');
   const [position, setPosition] = useState('');
@@ -397,7 +463,7 @@ function AdminDashboard({ candidates, addCandidate, deleteCandidate }: { candida
           <h2 className="text-3xl font-bold text-gray-900">Admin Dashboard</h2>
           <p className="text-gray-600 mt-2 mb-4">Manage candidates and view voting results</p>
         </div>
-        <Button onClick={() => {
+        <Button disabled={votingEnabled} onClick={() => {
           setShowAddForm(!showAddForm);
           setTimeout(() => {
             addRef.current?.scrollIntoView({
@@ -480,7 +546,6 @@ function AdminDashboard({ candidates, addCandidate, deleteCandidate }: { candida
           </div>
         </div>
       ))}
-
     </div>
   );
 }
