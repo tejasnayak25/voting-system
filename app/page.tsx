@@ -44,6 +44,8 @@ export default function VotingSystem() {
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [votingEnabled, setVotingEnabled] = useState(false);
   const [resetConfirmationOpen, setResetConfirmationOpen] = useState(false);
+  const [resettingVotes, setResettingVotes] = useState(false);
+  const [togglingVoting, setTogglingVoting] = useState(false);
   const { toast } = useToast();
 
   const fetchCandidates = async () => {
@@ -244,6 +246,7 @@ export default function VotingSystem() {
   };
 
   async function toggleVoting() {
+    setTogglingVoting(true);
     const res = await fetch('/api/voting-enabled', {
       method: 'POST',
       headers: { 
@@ -263,9 +266,13 @@ export default function VotingSystem() {
         toast({ title: 'Error', description: 'Failed to toggle voting.', variant: 'destructive' });
       }
     }
+
+    setTogglingVoting(false);
   }
 
   async function resetVotes() {
+    setResetConfirmationOpen(false);
+    setResettingVotes(true);
     const res = await fetch('/api/reset-votes', {
       method: 'POST',
       headers: { 
@@ -285,6 +292,8 @@ export default function VotingSystem() {
         toast({ title: 'Error', description: 'Failed to reset votes.', variant: 'destructive' });
       }
     }
+
+    setResettingVotes(false);
   }
 
   if (!currentUser) {
@@ -411,11 +420,11 @@ export default function VotingSystem() {
             <p className='text-gray-600'>Admin: {currentUser?.email}</p>
           </p>
           <div className='flex w-full sm:w-auto justify-between sm:justify-center items-center gap-4'>
-            <Button variant="default" onClick={() => toggleVoting()} className="w-auto">
-              {votingEnabled ? "Disable Voting" : "Enable Voting"}
+            <Button variant="default" disabled={togglingVoting} onClick={() => toggleVoting()} className="w-auto">
+              {togglingVoting ? 'Updating...' : (votingEnabled ? "Disable Voting" : "Enable Voting")}
             </Button>
-            <Button variant="secondary" onClick={() => setResetConfirmationOpen(true)} className="w-auto bg-red-500 hover:bg-red-600 text-white">
-              Reset Votes
+            <Button variant="secondary" disabled={resettingVotes} onClick={() => setResetConfirmationOpen(true)} className="w-auto bg-red-500 hover:bg-red-600 text-white">
+              {resettingVotes ? "Resetting Votes..." : "Reset Votes"}
             </Button>
             <Dialog open={resetConfirmationOpen} onOpenChange={(o) => !o && setResetConfirmationOpen(false)}>
               <DialogContent>
