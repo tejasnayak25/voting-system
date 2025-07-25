@@ -36,6 +36,7 @@ export default function VotingSystem() {
   const [otpSent, setOtpSent] = useState(false);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(false);
+  const [checkingVotedStatus, setCheckingVotedStatus] = useState(true); // new state
   const [voteSelections, setVoteSelections] = useState<VoteSelection>({});
   const { toast } = useToast();
 
@@ -53,11 +54,13 @@ export default function VotingSystem() {
       if (user.role !== 'admin') {
         fetch(`/api/voted?email=${encodeURIComponent(user.email)}`)
           .then(res => res.json())
-          .then(data => {
-            setCurrentUser({ ...user, hasVoted: !!data.voted });
-          })
-          .catch(() => setCurrentUser(user));
+          .then(data => {setCurrentUser({ ...user, hasVoted: !!data.voted });})
+          .catch(() => setCurrentUser(user))
+          .finally(() => setCheckingVotedStatus(false)); // done checking
       } else {
+        // if admin, directly set the user and skip the voted check
+        setCheckingVotedStatus(false);
+        console.log("admin user")
         setCurrentUser(user);
       }
     }
@@ -105,7 +108,9 @@ export default function VotingSystem() {
 
     if(res.ok) {
       const role = email === 'admin@sode-edu.in' ? 'admin' : 'user';
-      const user: User = { email, role, hasVoted: false };
+      const data = await res.json();
+      const user: User = { email, role, hasVoted: data.hasVoted || false };
+      setCheckingVotedStatus(false);
       setCurrentUser(user);
       localStorage.setItem('votingSystemUser', JSON.stringify(user));
       toast({ title: 'Login Successful', description: `Welcome ${role}!` });
@@ -271,6 +276,10 @@ export default function VotingSystem() {
         <Toaster />
       </div>
     );
+  }
+
+  if (checkingVotedStatus) {
+    return <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">Loading...</div>; // Or a more styled loading indicator
   }
 
   return (

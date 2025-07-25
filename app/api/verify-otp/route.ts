@@ -18,8 +18,16 @@ export async function POST(req: NextRequest) {
     if (otpDoc.data()?.otp !== otp) {
       return NextResponse.json({ error: 'Invalid OTP' }, { status: 400 });
     }
+
+    const votedRef = db.collection('voting-system').doc('system');
+    let doc = await votedRef.get();
+    let data = doc.data();
+    let hasVoted = false;
+    if (data && data.votedUsers && data.votedUsers.includes(email)) {
+      hasVoted = true;
+    }
     
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true, hasVoted: hasVoted }, { status: 200 });
   } catch (error) {
     console.log(error);
     return NextResponse.json({ error: 'Failed to send OTP' }, { status: 500 });
