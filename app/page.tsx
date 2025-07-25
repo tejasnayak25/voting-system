@@ -123,13 +123,12 @@ export default function VotingSystem() {
     });
 
     if(res.ok) {
-      const role = email === 'admin@sode-edu.in' ? 'admin' : 'user';
       const data = await res.json();
-      const user: User = { email, role, hasVoted: data.hasVoted || false };
+      const user: User = { email, role: data.role, hasVoted: data.hasVoted || false };
       setCheckingVotedStatus(false);
       setCurrentUser(user);
       localStorage.setItem('votingSystemUser', JSON.stringify(user));
-      toast({ title: 'Login Successful', description: `Welcome ${role}!` });
+      toast({ title: 'Login Successful', description: `Welcome ${data.role}!` });
     } else {
       toast({ title: 'Invalid OTP', description: 'Incorrect OTP.', variant: 'destructive' });
     }

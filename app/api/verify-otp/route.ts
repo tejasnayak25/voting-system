@@ -26,8 +26,10 @@ export async function POST(req: NextRequest) {
     if (data && data.votedUsers && data.votedUsers.includes(email)) {
       hasVoted = true;
     }
+
+    let role = email === process.env.ADMIN_MAIL ? "admin" : "user";
     
-    return NextResponse.json({ success: true, hasVoted: hasVoted }, { status: 200 });
+    return NextResponse.json({ success: true, role: role, hasVoted: hasVoted }, { status: 200 });
   } catch (error) {
     console.log(error);
     return NextResponse.json({ error: 'Failed to send OTP' }, { status: 500 });

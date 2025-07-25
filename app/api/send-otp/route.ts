@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       text: `Your OTP is: ${otp}`,
     };
 
-    if(email === "admin@sode-edu.in") {
+    if(email === process.env.ADMIN_MAIL) {
       console.log("Admin otp:", otp);
     } else {
       await transporter.sendMail(mailOptions);
