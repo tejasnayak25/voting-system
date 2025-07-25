@@ -38,6 +38,7 @@ export default function VotingSystem() {
   const [loading, setLoading] = useState(false);
   const [checkingVotedStatus, setCheckingVotedStatus] = useState(true); // new state
   const [verifyingOTP, setVerifyingOTP] = useState(false);
+  const [submittingVotes, setSubmittingVotes] = useState(false);
   const [voteSelections, setVoteSelections] = useState<VoteSelection>({});
   const { toast } = useToast();
 
@@ -147,6 +148,8 @@ export default function VotingSystem() {
       return;
     }
 
+    setSubmittingVotes(true);
+
     // Call backend voting route
     const candidateIds = Object.values(voteSelections);
     const res = await fetch('/api/vote', {
@@ -169,19 +172,25 @@ export default function VotingSystem() {
         toast({ title: 'Error', description: 'Failed to cast votes.', variant: 'destructive' });
       }
     }
+
+    setSubmittingVotes(false);
   };
 
   const handleCandidateSelection = (position: string, candidateId: string) => {
     setVoteSelections(prev => ({ ...prev, [position]: candidateId }));
   };
 
-  const addCandidate = async (name: string, position: string, description: string) => {
+  async function addCandidate (name: string, position: string, description: string) : Promise<void> {
     const exists = candidates.some(c => c.name === name && c.position === position);
     if (exists) {
       toast({ title: 'Duplicate Candidate', description: 'Same name & position already exists.', variant: 'destructive' });
       return;
     }
     let data = JSON.stringify({ name, position, description });
+
+    candidates.push({ id: crypto.randomUUID(), name, position, description, votes: 0 });
+    setCandidates([...candidates]);
+
     const res = await fetch('/api/candidates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -196,6 +205,8 @@ export default function VotingSystem() {
   };
 
   const deleteCandidate = async (id: string) => {
+    candidates.splice(candidates.findIndex(c => c.id === id), 1);
+    setCandidates([...candidates]);
     const res = await fetch('/api/candidates', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -260,7 +271,7 @@ export default function VotingSystem() {
                   </div>
                   <Button 
                     onClick={verifyOTP} 
-                    disabled={otp.length !== 6}
+                    disabled={otp.length !== 6 || verifyingOTP}
                     className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                   >
                     { verifyingOTP ? 'Verifying OTP...' : "Verify & Login" }
@@ -321,6 +332,7 @@ export default function VotingSystem() {
             voteSelections={voteSelections}
             onCandidateSelect={handleCandidateSelection}
             onSubmitVotes={submitVotes}
+            submittingVotes={submittingVotes}
             hasVoted={currentUser.hasVoted}
           />
         )}
@@ -330,16 +342,20 @@ export default function VotingSystem() {
   );
 }
 
-function AdminDashboard({ candidates, addCandidate, deleteCandidate }: { candidates: Candidate[]; addCandidate: (name: string, position: string, description: string) => void; deleteCandidate: (id: string) => void; }) {
+function AdminDashboard({ candidates, addCandidate, deleteCandidate }: { candidates: Candidate[]; addCandidate: (name: string, position: string, description: string) => Promise<void>; deleteCandidate: (id: string) => void; }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState('');
   const [position, setPosition] = useState('');
   const [description, setDescription] = useState('');
+  const [addingCandidate, setAddingCandidate] = useState(false);
   const addRef = useRef<HTMLDivElement>(null);
 
   const handleAdd = () => {
     if (name && position && description) {
-      addCandidate(name, position, description);
+      setAddingCandidate(true);
+      addCandidate(name, position, description).then(() => {
+        setAddingCandidate(false);
+      });
       setName('');
       setPosition('');
       setDescription('');
@@ -400,8 +416,8 @@ function AdminDashboard({ candidates, addCandidate, deleteCandidate }: { candida
               <Input id="candidateDescription" value={description} onChange={e => setDescription(e.target.value)} placeholder="Enter candidate description" />
             </div>
             <div className="flex space-x-2">
-              <Button onClick={handleAdd} disabled={!name || !position || !description}>Add Candidate</Button>
-              <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
+              <Button onClick={handleAdd} disabled={!name || !position || !description || addingCandidate}>{addingCandidate ? 'Adding Candidate...' : "Add Candidate"}</Button>
+              <Button variant="outline" className={addingCandidate ? 'hidden' : 'block'} onClick={() => setShowAddForm(false)}>Cancel</Button>
             </div>
           </CardContent>
         </Card>
@@ -454,7 +470,7 @@ function AdminDashboard({ candidates, addCandidate, deleteCandidate }: { candida
   );
 }
 
-function UserDashboard({ candidates, voteSelections, onCandidateSelect, onSubmitVotes, hasVoted }: { candidates: Candidate[]; voteSelections: VoteSelection; onCandidateSelect: (position: string, candidateId: string) => void; onSubmitVotes: () => void; hasVoted: boolean; }) {
+function UserDashboard({ candidates, voteSelections, onCandidateSelect, onSubmitVotes, submittingVotes, hasVoted }: { candidates: Candidate[]; voteSelections: VoteSelection; onCandidateSelect: (position: string, candidateId: string) => void; onSubmitVotes: () => void; submittingVotes: boolean; hasVoted: boolean; }) {
   const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
   const positions = [...Array.from(new Set(candidates.map(c => c.position)))];
   const groupedCandidates = positions.reduce((acc, position) => {
@@ -508,11 +524,11 @@ function UserDashboard({ candidates, voteSelections, onCandidateSelect, onSubmit
           <div className="flex justify-center">
             <Button 
               onClick={onSubmitVotes}
-              disabled={Object.keys(voteSelections).length !== positions.length}
+              disabled={Object.keys(voteSelections).length !== positions.length || submittingVotes}
               className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 px-8 py-3 text-lg"
               size="lg"
             >
-              Submit All Votes ({Object.keys(voteSelections).length}/{positions.length})
+              { submittingVotes ? 'Submitting Votes...' : `Submit All Votes (${Object.keys(voteSelections).length}/${positions.length})`}
             </Button>
           </div>
         </div>
