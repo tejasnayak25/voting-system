@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Vote, Shield, Users, BarChart3, LogOut } from 'lucide-react';
+import { Vote, Shield, Users, BarChart3, LogOut, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -411,6 +411,7 @@ export default function VotingSystem() {
             onSubmitVotes={submitVotes}
             submittingVotes={submittingVotes}
             hasVoted={currentUser.hasVoted}
+            fetchCandidates={fetchCandidates}
           />
         )}
       </main>
@@ -577,7 +578,7 @@ function AdminDashboard({ candidates, addCandidate, deleteCandidate, votingEnabl
   );
 }
 
-function UserDashboard({ candidates, voteSelections, onCandidateSelect, onSubmitVotes, submittingVotes, hasVoted }: { candidates: Candidate[]; voteSelections: VoteSelection; onCandidateSelect: (position: string, candidateId: string) => void; onSubmitVotes: () => void; submittingVotes: boolean; hasVoted: boolean; }) {
+function UserDashboard({ candidates, voteSelections, onCandidateSelect, onSubmitVotes, submittingVotes, hasVoted, fetchCandidates }: { candidates: Candidate[]; voteSelections: VoteSelection; onCandidateSelect: (position: string, candidateId: string) => void; onSubmitVotes: () => void; submittingVotes: boolean; hasVoted: boolean; fetchCandidates: () => void; }) {
   const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
   const positions = [...Array.from(new Set(candidates.map(c => c.position)))];
   const groupedCandidates = positions.reduce((acc, position) => {
@@ -643,9 +644,12 @@ function UserDashboard({ candidates, voteSelections, onCandidateSelect, onSubmit
       {hasVoted && (
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5" />
-              <span>Voting Results</span>
+            <CardTitle className="flex items-center justify-between space-x-2">
+              <div className='flex items-center space-x-2'>
+                <BarChart3 className="w-5 h-5" />
+                <span>Voting Results</span>
+              </div>
+              <RefreshCw onClick={fetchCandidates} className="w-5 h-5" />
             </CardTitle>
           </CardHeader>
           <CardContent>
