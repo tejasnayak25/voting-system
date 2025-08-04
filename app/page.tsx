@@ -259,6 +259,8 @@ export default function VotingSystem() {
     if(res.ok) {
       toast({ title: 'Voting Toggled', description: 'Voting has been toggled.' });
       setVotingEnabled(!votingEnabled);
+
+      fetchCandidates();
     } else {
       if(res.status === 403) {
         toast({ title: 'Error', description: 'You are not authorized to do this operation.', variant: 'destructive' })
