@@ -649,7 +649,7 @@ function UserDashboard({ candidates, voteSelections, onCandidateSelect, onSubmit
                 <BarChart3 className="w-5 h-5" />
                 <span>Voting Results</span>
               </div>
-              <RefreshCw onClick={fetchCandidates} className="w-5 h-5" />
+              <RefreshCw onClick={fetchCandidates} className="w-5 h-5 active:scale-95 transition-all cursor-pointer" />
             </CardTitle>
           </CardHeader>
           <CardContent>
